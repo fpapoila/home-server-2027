@@ -1,0 +1,37 @@
+name: Frontend validation
+on:
+  push:
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/frontend.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+      - run: npm install --no-save @playwright/test
+      - run: npx playwright install --with-deps chromium
+      - run: |
+          npm run preview -- --host 127.0.0.1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4173 && break; sleep 1; done
+          npx playwright screenshot --wait-for-timeout=2500 --viewport-size='1440,900' http://127.0.0.1:4173 welcome-desktop.png
+          npx playwright screenshot --wait-for-timeout=2500 --viewport-size='390,844' http://127.0.0.1:4173 welcome-mobile.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: browser-screenshots
+          path: frontend/welcome-*.png
